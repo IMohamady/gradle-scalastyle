@@ -25,7 +25,7 @@ public class ScalaStylePluginTest extends Specification {
     def "add tasks to the project"() {
         when:
         Project project = ProjectBuilder.builder().build()
-        project.plugins.apply "cz.alenkacz.scalaStyle"
+        project.plugins.apply "cz.alenkacz.scalastyle"
 
         then:
         project.tasks.scalaStyle instanceof ScalaStyleTask
