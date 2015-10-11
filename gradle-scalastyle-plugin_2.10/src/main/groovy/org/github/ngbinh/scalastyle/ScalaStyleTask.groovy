@@ -65,11 +65,11 @@ class ScalaStyleTask extends SourceTask {
                 def fileToProcess = scalaStyleUtils.getFilesToProcess(source.getFiles().toList(), testSourceDir.getFiles().toList(), inputEncoding, includeTestSourceDirectory)
                 def messages = new ScalastyleChecker().checkFiles(configuration, fileToProcess)
 
-                def testConfiguration = ScalastyleConfiguration.readFromXml(testConfigLocation)
+                /*def testConfiguration = ScalastyleConfiguration.readFromXml(testConfigLocation)
                 if (testConfiguration != null) {
                     def testFilesToProcess = scalaStyleUtils.getFilesToProcess(source.getFiles().toList(), testSourceDir.getFiles().toList(), inputEncoding, includeTestSourceDirectory)
                     messages.addAll(new ScalastyleChecker().checkFiles(testConfiguration, testFilesToProcess))
-                }
+                }*/
 
                 def config = ConfigFactory.load()
 
