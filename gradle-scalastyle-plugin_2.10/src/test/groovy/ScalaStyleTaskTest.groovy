@@ -38,7 +38,7 @@ class ScalaStyleTaskTest extends Specification {
     def "succeed on scala project with no violations"() {
         given:
             gradleBuildFile << buildFileWithScalaStyle()
-            scalaStyleConfigFile << scalaStyleConfigurationWithNameRule()
+            scalaStyleConfigFile << scalaStyleConfigurationWithSingleRule()
             targetScalaClass << scalaClassPassingScalaStyle()
         when:
         def actual = GradleRunner.create()
@@ -53,7 +53,7 @@ class ScalaStyleTaskTest extends Specification {
     def "fail on scala project with rule violation"() {
         given:
             gradleBuildFile << buildFileWithScalaStyle()
-            scalaStyleConfigFile << scalaStyleConfigurationWithNameRule()
+            scalaStyleConfigFile << scalaStyleConfigurationWithSingleRule()
             targetScalaClass << scalaClassFailingScalaStyle()
         when:
             def actual = GradleRunner.create()
@@ -63,6 +63,75 @@ class ScalaStyleTaskTest extends Specification {
 
         then:
             actual.task(":scalaStyle").outcome == TaskOutcome.FAILED
+    }
+
+    def "not fail on scala project with rule violation when failOnViolation is turned off"() {
+        given:
+            gradleBuildFile << buildFileWithScalaStyleAndTurnedOffFailOnViolation()
+            scalaStyleConfigFile << scalaStyleConfigurationWithSingleRule()
+            targetScalaClass << scalaClassFailingScalaStyle()
+        when:
+            def actual = GradleRunner.create()
+                    .withProjectDir(targetProjectDir.root)
+                    .withArguments(':scalaStyle', '--stacktrace')
+                    .build()
+
+        then:
+            actual.task(":scalaStyle").outcome == TaskOutcome.SUCCESS
+    }
+
+    def "not fail when skip is turned on"() {
+        given:
+            gradleBuildFile << buildFileWithScalaStyleAndSkipTurnedOn()
+            scalaStyleConfigFile << scalaStyleConfigurationWithSingleRule()
+            targetScalaClass << scalaClassFailingScalaStyle()
+        when:
+            def actual = GradleRunner.create()
+                    .withProjectDir(targetProjectDir.root)
+                    .withArguments(':scalaStyle', '--stacktrace')
+                    .build()
+
+        then:
+            actual.task(":scalaStyle").outcome == TaskOutcome.SUCCESS
+    }
+
+    def "find failures in test sources if enabled"() {
+        given:
+            gradleBuildFile << buildFileWithScalaStyleAlsoForTests()
+            scalaStyleConfigFile << scalaStyleConfigurationWithSingleRule()
+            targetScalaClass << scalaClassPassingScalaStyle()
+            def testFile = createTestFile()
+            testFile << scalaClassFailingScalaStyle()
+        when:
+            def actual = GradleRunner.create()
+                    .withProjectDir(targetProjectDir.root)
+                    .withArguments(':scalaStyle', '--stacktrace')
+                    .buildAndFail()
+
+        then:
+            actual.task(":scalaStyle").outcome == TaskOutcome.FAILED
+    }
+
+    def "not find failures in test sources when disabled"() {
+        given:
+        gradleBuildFile << buildFileWithScalaStyleAlsoForTestsButDisabled()
+        scalaStyleConfigFile << scalaStyleConfigurationWithSingleRule()
+        targetScalaClass << scalaClassPassingScalaStyle()
+        def testFile = createTestFile()
+        testFile << scalaClassFailingScalaStyle()
+        when:
+        def actual = GradleRunner.create()
+                .withProjectDir(targetProjectDir.root)
+                .withArguments(':scalaStyle', '--stacktrace')
+                .build()
+
+        then:
+        actual.task(":scalaStyle").outcome == TaskOutcome.SUCCESS
+    }
+
+    def createTestFile() {
+        File testSourceCodeDir = targetProjectDir.newFolder('src', 'test', 'scala')
+        new File(testSourceCodeDir, 'MainTest.scala')
     }
 
     def buildFileWithScalaStyle() {
@@ -87,7 +156,99 @@ class ScalaStyleTaskTest extends Specification {
         """
     }
 
-    def scalaStyleConfigurationWithNameRule() {
+    def buildFileWithScalaStyleAndTurnedOffFailOnViolation() {
+        def pluginClasspath = sourceCodeOfThisPluginClasspath()
+
+        """
+            buildscript {
+                dependencies {
+                    classpath files($pluginClasspath)
+                }
+            }
+
+            apply plugin: 'cz.alenkacz.scalastyle'
+
+            scalaStyle {
+                configLocation = "${scalaStyleConfigFile.getAbsolutePath().replace('\\', '\\\\')}"
+                includeTestSourceDirectory = false
+                source = "src/main/scala"
+                verbose = true
+                failOnViolation = false
+            }
+
+        """
+    }
+
+    def buildFileWithScalaStyleAndSkipTurnedOn() {
+        def pluginClasspath = sourceCodeOfThisPluginClasspath()
+
+        """
+            buildscript {
+                dependencies {
+                    classpath files($pluginClasspath)
+                }
+            }
+
+            apply plugin: 'cz.alenkacz.scalastyle'
+
+            scalaStyle {
+                configLocation = "${scalaStyleConfigFile.getAbsolutePath().replace('\\', '\\\\')}"
+                includeTestSourceDirectory = false
+                skip = true
+                source = "src/main/scala"
+                verbose = true
+            }
+
+        """
+    }
+
+    def buildFileWithScalaStyleAlsoForTests() {
+        def pluginClasspath = sourceCodeOfThisPluginClasspath()
+
+        """
+            buildscript {
+                dependencies {
+                    classpath files($pluginClasspath)
+                }
+            }
+
+            apply plugin: 'cz.alenkacz.scalastyle'
+
+            scalaStyle {
+                configLocation = "${scalaStyleConfigFile.getAbsolutePath().replace('\\', '\\\\')}"
+                includeTestSourceDirectory = true
+                source = "src/main/scala"
+                testSource = "src/test/scala"
+                verbose = true
+            }
+
+        """
+    }
+
+    def buildFileWithScalaStyleAlsoForTestsButDisabled() {
+        def pluginClasspath = sourceCodeOfThisPluginClasspath()
+
+        """
+            buildscript {
+                dependencies {
+                    classpath files($pluginClasspath)
+                }
+            }
+
+            apply plugin: 'cz.alenkacz.scalastyle'
+
+            scalaStyle {
+                configLocation = "${scalaStyleConfigFile.getAbsolutePath().replace('\\', '\\\\')}"
+                includeTestSourceDirectory = false
+                source = "src/main/scala"
+                testSource = "src/test/scala"
+                verbose = true
+            }
+
+        """
+    }
+
+    def scalaStyleConfigurationWithSingleRule() {
         '''
             <scalastyle commentFilter="enabled">
              <name>Scalastyle standard configuration</name>
