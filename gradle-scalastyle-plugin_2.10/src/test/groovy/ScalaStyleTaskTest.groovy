@@ -1,3 +1,20 @@
+/*
+ *    Copyright 2014. Binh Nguyen
+ *
+ *    Copyright 2013. Muhammad Ashraf
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
@@ -33,6 +50,21 @@ class ScalaStyleTaskTest extends Specification {
             actual.task(":scalaStyle").outcome == TaskOutcome.SUCCESS
     }
 
+    def "fail on scala project with rule violation"() {
+        given:
+            gradleBuildFile << buildFileWithScalaStyle()
+            scalaStyleConfigFile << scalaStyleConfigurationWithNameRule()
+            targetScalaClass << scalaClassFailingScalaStyle()
+        when:
+            def actual = GradleRunner.create()
+                    .withProjectDir(targetProjectDir.root)
+                    .withArguments(':scalaStyle', '--stacktrace')
+            .buildAndFail()
+
+        then:
+            actual.task(":scalaStyle").outcome == TaskOutcome.FAILED
+    }
+
     def buildFileWithScalaStyle() {
         def pluginClasspath = sourceCodeOfThisPluginClasspath()
 
@@ -59,13 +91,7 @@ class ScalaStyleTaskTest extends Specification {
         '''
             <scalastyle commentFilter="enabled">
              <name>Scalastyle standard configuration</name>
-             <check level="warning" class="org.scalastyle.scalariform.ObjectNamesChecker" enabled="true">
-                <parameters>
-                    <parameter name="regex">
-                        <![CDATA[ [A-Z][A-Za-z]* ]]>
-                    </parameter>
-                </parameters>
-            </check>
+             <check level="error" class="org.scalastyle.scalariform.EmptyClassChecker" enabled="true"/>
             </scalastyle>
         '''
     }
@@ -74,7 +100,15 @@ class ScalaStyleTaskTest extends Specification {
         '''
         package com.avast.alenkacz.scalastyle.test
 
-        class MainClas {
+        class Main
+        '''
+    }
+
+    def scalaClassFailingScalaStyle() {
+        '''
+        package com.avast.alenkacz.scalastyle.test
+
+        class Main {
         }
         '''
     }
