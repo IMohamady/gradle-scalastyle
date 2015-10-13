@@ -30,9 +30,6 @@ Configure the plugin
 ```groovy
   scalaStyle {
     configLocation = "/path/to/scalaStyle.xml"
-    includeTestSourceDirectory = true
-    source = "src/main/scala"
-    testSource = "src/test/scala"
   }
 
 ```
@@ -50,6 +47,8 @@ Other optional properties are
   includeTestSourceDirectory //Default => false
   testConfigLocation //Separate configuration file to be used for test sources
   inputEncoding //Default => UTF-8
+  source // Default => "/src/main/scala"
+  testSource // Default => "/src/test/scala"
 ```
 
 #### Full Buildscript Example
