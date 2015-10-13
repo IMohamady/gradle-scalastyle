@@ -17,6 +17,7 @@
  */
 package org.github.ngbinh.scalastyle
 
+import org.gradle.api.DefaultTask
 import org.gradle.api.file.FileTree
 import org.gradle.api.tasks.SourceTask
 import org.gradle.api.tasks.TaskAction
@@ -33,7 +34,7 @@ import com.typesafe.config.Config
  * @author Muhammad Ashraf
  * @since 5/11/13
  */
-class ScalaStyleTask extends SourceTask {
+class ScalaStyleTask extends DefaultTask {
     File buildDirectory
     String configLocation
     String testConfigLocation
@@ -47,6 +48,8 @@ class ScalaStyleTask extends SourceTask {
     Boolean includeTestSourceDirectory = true
     String inputEncoding = "UTF-8"
     ScalaStyleUtils scalaStyleUtils = new ScalaStyleUtils()
+    String source
+    FileTree sourceDir
     String testSource
     FileTree testSourceDir
 
@@ -62,12 +65,12 @@ class ScalaStyleTask extends SourceTask {
             try {
                 def startMs = System.currentTimeMillis()
                 def configuration = ScalastyleConfiguration.readFromXml(configLocation)
-                def fileToProcess = scalaStyleUtils.getFilesToProcess(source.getFiles().toList(), testSourceDir.getFiles().toList(), inputEncoding, includeTestSourceDirectory)
+                def fileToProcess = scalaStyleUtils.getFilesToProcess(sourceDir.getFiles().toList(), testSourceDir.getFiles().toList(), inputEncoding, includeTestSourceDirectory)
                 def messages = new ScalastyleChecker().checkFiles(configuration, fileToProcess)
 
                 if (testConfigLocation?.trim()) {
                     def testConfiguration = ScalastyleConfiguration.readFromXml(testConfigLocation)
-                    def testFilesToProcess = scalaStyleUtils.getFilesToProcess(source.getFiles().toList(), testSourceDir.getFiles().toList(), inputEncoding, includeTestSourceDirectory)
+                    def testFilesToProcess = scalaStyleUtils.getFilesToProcess(sourceDir.getFiles().toList(), testSourceDir.getFiles().toList(), inputEncoding, includeTestSourceDirectory)
                     messages.addAll(new ScalastyleChecker().checkFiles(testConfiguration, testFilesToProcess))
                 }
 
@@ -114,8 +117,10 @@ class ScalaStyleTask extends SourceTask {
             throw new Exception("No Scalastyle configuration file provided")
         }
 
-        if (source == null) {
-            throw new Exception("Specify Scala source set")
+        if (!source?.trim()) {
+            sourceDir = project.fileTree(project.projectDir.absolutePath + "/src/main/scala")
+        } else {
+            sourceDir = project.fileTree(project.projectDir.absolutePath + source)
         }
 
         if (includeTestSourceDirectory && testSource == null) {
@@ -146,6 +151,7 @@ class ScalaStyleTask extends SourceTask {
         }
 
         if (verbose) {
+            project.getLogger().info("sourceDir: {}", sourceDir.asPath)
             project.getLogger().info("configLocation: {}", configLocation)
             project.getLogger().info("testConfigLocation: {}", testConfigLocation)
             project.getLogger().info("buildDirectory: {}", buildDirectory)

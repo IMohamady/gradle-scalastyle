@@ -129,6 +129,21 @@ class ScalaStyleTaskTest extends Specification {
         actual.task(":scalaStyle").outcome == TaskOutcome.SUCCESS
     }
 
+    def "be able to find source in the default folder even if not provided in configuration"() {
+        given:
+            gradleBuildFile << buildFileWithScalaStyleWithoutSourceSpecified()
+            scalaStyleConfigFile << scalaStyleConfigurationWithSingleRule()
+            targetScalaClass << scalaClassFailingScalaStyle()
+        when:
+            def actual = GradleRunner.create()
+                    .withProjectDir(targetProjectDir.root)
+                    .withArguments(':scalaStyle', '--stacktrace')
+                    .buildAndFail()
+
+        then:
+            actual.task(":scalaStyle").outcome == TaskOutcome.FAILED
+    }
+
     def createTestFile() {
         File testSourceCodeDir = targetProjectDir.newFolder('src', 'test', 'scala')
         new File(testSourceCodeDir, 'MainTest.scala')
@@ -149,7 +164,7 @@ class ScalaStyleTaskTest extends Specification {
             scalaStyle {
                 configLocation = "${scalaStyleConfigFile.getAbsolutePath().replace('\\', '\\\\')}"
                 includeTestSourceDirectory = false
-                source = "src/main/scala"
+                source = "/src/main/scala"
                 verbose = true
             }
 
@@ -243,6 +258,25 @@ class ScalaStyleTaskTest extends Specification {
                 source = "src/main/scala"
                 testSource = "src/test/scala"
                 verbose = true
+            }
+
+        """
+    }
+
+    def buildFileWithScalaStyleWithoutSourceSpecified() {
+        def pluginClasspath = sourceCodeOfThisPluginClasspath()
+
+        """
+            buildscript {
+                dependencies {
+                    classpath files($pluginClasspath)
+                }
+            }
+
+            apply plugin: 'cz.alenkacz.scalastyle'
+
+            scalaStyle {
+                configLocation = "${scalaStyleConfigFile.getAbsolutePath().replace('\\', '\\\\')}"
             }
 
         """
