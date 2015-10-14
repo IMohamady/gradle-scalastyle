@@ -15,8 +15,9 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-package org.github.ngbinh.scalastyle
+package cz.alenkacz.gradle.scalastyle
 
+import org.github.ngbinh.scalastyle.ScalaStyleUtils
 import org.gradle.api.file.FileTree
 import org.gradle.api.tasks.SourceTask
 import org.gradle.api.tasks.TaskAction

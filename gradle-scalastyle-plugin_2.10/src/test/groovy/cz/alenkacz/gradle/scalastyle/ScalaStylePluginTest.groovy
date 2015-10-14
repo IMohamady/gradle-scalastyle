@@ -1,3 +1,4 @@
+package cz.alenkacz.gradle.scalastyle
 /*
  *    Copyright 2014. Binh Nguyen
  *
@@ -15,7 +16,6 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-import org.github.ngbinh.scalastyle.ScalaStyleTask
 import org.gradle.api.Project
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Test

@@ -1,3 +1,4 @@
+package cz.alenkacz.gradle.scalastyle
 /*
  *    Copyright 2014. Binh Nguyen
  *

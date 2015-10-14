@@ -15,7 +15,7 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-package org.github.ngbinh.scalastyle
+package cz.alenkacz.gradle.scalastyle
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
