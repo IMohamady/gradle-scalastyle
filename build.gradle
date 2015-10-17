@@ -22,139 +22,126 @@ buildscript {
     }
 }
 
+apply plugin: "java"
+apply plugin: "scala"
+apply plugin: "groovy"
+apply plugin: 'signing' // For pushing to Sonatype OSS Staging repository
+apply plugin: 'com.jfrog.bintray'
+apply plugin: 'maven-publish'
+
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
+
 version = projectVersion
 group = projectGroup
 
-// Define projects
-def twoTenProject = project(':gradle-scalastyle-plugin_2.10')
-def twoElevenProject = project(':gradle-scalastyle-plugin_2.11')
-
-twoTenProject.ext.scalaDist = "2.10"
-twoElevenProject.ext.scalaDist = "2.11"
+repositories {
+    mavenCentral()
+    jcenter()
+}
 
 task wrapper(type: Wrapper) {
     gradleVersion = "2.7"
 }
 
-subprojects {
-  apply plugin: "java"
-  apply plugin: "scala"
-  apply plugin: "groovy"
-  apply plugin: 'signing' // For pushing to Sonatype OSS Staging repository
-  apply plugin: 'com.jfrog.bintray'
-  apply plugin: 'maven-publish'
+ext {
+  versions = [:]
+}
 
-  // JRE 1.6 should work
-  sourceCompatibility = 1.6
-  targetCompatibility = 1.6
+versions.scalaDist = "2.11"
+versions.scalaStyle = "0.6.0"
+versions.junit = "4.12"
 
-  version = projectVersion
-  group = projectGroup
+task createClasspathManifest {
+    def outputDir = file("$buildDir/$name")
 
-  ext {
-      versions = [:]
-  }
+    inputs.files sourceSets.main.runtimeClasspath
+    outputs.dir outputDir
 
-  versions.scalaDist = scalaDist
-  versions.scalaStyle = "0.6.0"
-  versions.junit = "4.12"
-
-  repositories {
-      mavenCentral()
-      jcenter()
-  }
-
-    task createClasspathManifest {
-        def outputDir = file("$buildDir/$name")
-
-        inputs.files sourceSets.main.runtimeClasspath
-        outputs.dir outputDir
-
-        doLast {
-            outputDir.mkdirs()
-            file("$outputDir/plugin-classpath.txt").text = sourceSets.main.runtimeClasspath.join("\n")
-        }
+    doLast {
+        outputDir.mkdirs()
+        file("$outputDir/plugin-classpath.txt").text = sourceSets.main.runtimeClasspath.join("\n")
     }
+}
 
-  dependencies {
-      compile gradleApi()
-      compile localGroovy()
+dependencies {
+  compile gradleApi()
+  compile localGroovy()
 
-      compile "org.scalastyle:scalastyle_${versions.scalaDist}:${versions.scalaStyle}"
-      testCompile 'junit:junit:${versions.junit}'
-      testCompile gradleTestKit()
-      testCompile ('org.spockframework:spock-core:1.0-groovy-2.3') {
-          exclude group:'org.codehaus.groovy'
-      }
-      testRuntime files(createClasspathManifest)
+  compile "org.scalastyle:scalastyle_${versions.scalaDist}:${versions.scalaStyle}"
+  testCompile 'junit:junit:${versions.junit}'
+  testCompile gradleTestKit()
+  testCompile ('org.spockframework:spock-core:1.0-groovy-2.3') {
+      exclude group:'org.codehaus.groovy'
   }
+  testRuntime files(createClasspathManifest)
+}
 
-  compileGroovy.dependsOn(compileScala)
+compileGroovy.dependsOn(compileScala)
 
-  // Required for Sonatype
-  task sourcesJar(type: Jar, dependsOn: classes) {
-      from sourceSets.main.allSource
-      classifier "sources"
-      extension "jar"
+// Required for Sonatype
+task sourcesJar(type: Jar, dependsOn: classes) {
+  from sourceSets.main.allSource
+  classifier "sources"
+  extension "jar"
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+  from javadoc.destinationDir
+  classifier "javadoc"
+  extension "jar"
+}
+
+configurations.create("sources")
+configurations.create("javadoc")
+configurations.archives {
+  extendsFrom configurations.sources
+  extendsFrom configurations.javadoc
+}
+
+artifacts {
+  sources(sourcesJar) {
+      type "jar"
   }
-
-  task javadocJar(type: Jar, dependsOn: javadoc) {
-      from javadoc.destinationDir
-      classifier "javadoc"
-      extension "jar"
+  javadoc(javadocJar) {
+      type "javadoc"
   }
+}
 
-  configurations.create("sources")
-  configurations.create("javadoc")
-  configurations.archives {
-      extendsFrom configurations.sources
-      extendsFrom configurations.javadoc
-  }
+publishing {
+  publications {
+      mavenJava(MavenPublication) {
+          from components.java
+          groupId = projectGroup
 
-  artifacts {
-      sources(sourcesJar) {
-          type "jar"
-      }
-      javadoc(javadocJar) {
-          type "javadoc"
-      }
-  }
+          artifact sourcesJar {
+              classifier "sources"
+          }
 
-  publishing {
-      publications {
-          mavenJava(MavenPublication) {
-              from components.java
-              groupId = projectGroup
-
-              artifact sourcesJar {
-                  classifier "sources"
-              }
-
-              artifact javadocJar {
-                  classifier "javadoc"
-              }
+          artifact javadocJar {
+              classifier "javadoc"
           }
       }
   }
+}
 
-  bintray {
+bintray {
 
-      user = project.hasProperty('bintray_user') ? project.bintray_user : 'NotGonnaWork'
-      key = project.hasProperty('bintray_key') ? project.bintray_key : 'NotGonnaWork'
+  user = project.hasProperty('bintray_user') ? project.bintray_user : 'NotGonnaWork'
+  key = project.hasProperty('bintray_key') ? project.bintray_key : 'NotGonnaWork'
 
-      publications = ['mavenJava']
-      pkg {
-          repo = 'maven'
-          name = project.name
-          desc = 'gradle-scalastyle is a Gradle plugin for running the Scalastyle style checker.'
-          licenses = ['Apache-2.0']
-          labels = [version]
-          desc = 'Gradle plugin for scalaStyle'
-          websiteUrl = projectHomepage
-          issueTrackerUrl = 'https://github.com/ngbinh/gradle-scalastyle-plugin/issues'
-          vcsUrl = 'https://github.com/ngbinh/gradle-scalastyle-plugin.git'
-          licenses = ['Apache-2.0']
-          publicDownloadNumbers = true
-      }
+  publications = ['mavenJava']
+  pkg {
+      repo = 'maven'
+      name = project.name
+      desc = 'gradle-scalastyle is a Gradle plugin for running the Scalastyle style checker.'
+      licenses = ['Apache-2.0']
+      labels = [version]
+      desc = 'Gradle plugin for scalaStyle'
+      websiteUrl = projectHomepage
+      issueTrackerUrl = 'https://github.com/ngbinh/gradle-scalastyle-plugin/issues'
+      vcsUrl = 'https://github.com/ngbinh/gradle-scalastyle-plugin.git'
+      licenses = ['Apache-2.0']
+      publicDownloadNumbers = true
   }
 }
